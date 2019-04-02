@@ -1,0 +1,33 @@
+#@ load("@github.com/lionelvillard/yttlibs:core/module.lib.yml", "clusteraccess")
+#@ load("@ytt:template", "template")
+#@ load("@ytt:data", "data")
+
+---
+apiVersion: sources.eventing.knative.dev/v1alpha1
+kind: EtcdSource
+metadata:
+  name: #@ data.values.name
+spec:
+  serviceAccountName: #@ data.values.name
+  resources:
+    - apiVersion: cloudant.seed.ibm.com/v1alpha1
+      kind: Database
+  sink:
+    apiVersion: serving.knative.dev/v1alpha1
+    kind: Service
+    name: #@ data.values.name + "-reconcile"
+---
+apiVersion: serving.knative.dev/v1alpha1
+kind: Service
+metadata:
+  name: #@ data.values.name + "-reconcile"
+spec:
+  runLatest:
+    configuration:
+      revisionTemplate:
+        spec:
+          container:
+            image: github.ibm.com/villard/knative-crd-demo/cmd/reconcile
+
+#! Enable cluster access to cloudant resources
+--- #@ template.replace(clusteraccess(data.values))

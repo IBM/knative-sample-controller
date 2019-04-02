@@ -1,0 +1,7 @@
+apiVersion: cloudant.seed.ibm.com/v1alpha1
+kind: Database
+metadata:
+  name: knative-cloudant-database
+spec:
+  secretRef: cloudant-credentials
+  name: knative-cloudant-database
