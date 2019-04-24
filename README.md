@@ -1,7 +1,7 @@
 # Knative Sample Controller
 
 This project demonstrates how to implement CustomResourceDefinition (CRD) controllers using the
-Knative [API server event source](https://github.com/knative/eventing-sources/pull/294) linked to Knative service.
+Knative [API server event source](https://github.com/knative/eventing-sources/tree/master/contrib/apiserver) linked to Knative service.
 
 This is a Knative variant of the [sample controller](https://github.com/kubernetes/sample-controller) project.
 
