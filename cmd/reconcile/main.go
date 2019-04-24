@@ -2,71 +2,71 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"flag"
 	"log"
 
-	"github.com/cloudevents/sdk-go/pkg/cloudevents"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
+	cloudevents "github.com/cloudevents/sdk-go"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
+	"k8s.io/client-go/kubernetes"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog"
+
+	clientset "github.com/lionelvillard/knative-sample-controller/pkg/generated/clientset/versioned"
+	"github.com/lionelvillard/knative-sample-controller/pkg/reconciler"
 )
 
-// CloudantDatabase is ...
-type CloudantDatabase struct {
-	Spec CloudantDatabaseSpec `json:"spec"`
+type envConfig struct {
+	// Port on which to listen for cloudevents
+	Port int    `envconfig:"RCV_PORT" default:"8080"`
+	Path string `envconfig:"RCV_PATH" default:"/"`
 }
 
-// CloudantDatabaseSpec is ...
-type CloudantDatabaseSpec struct {
-	SecretRef string `json:"secretRef"`
-	Name      string `json:"name"`
-}
-
-func reconcile(ctx context.Context, event cloudevents.Event) {
-	log.Println("receiving event")
-	valid := event.Validate()
-	if valid != nil {
-		log.Printf("event not valid: %v\n", valid)
-		return
-	}
-
-	data := event.Data.([]byte)
-	obj := CloudantDatabase{}
-	err := json.Unmarshal(data, &obj)
-	if err != nil {
-		log.Printf("data not valid: %v\n", err)
-		return
-	}
-
-	log.Println(obj)
-}
+var (
+	masterURL  string
+	kubeconfig string
+)
 
 func main() {
-	c, err := newDefaultClient()
-	if err != nil {
-		log.Fatal("Failed to create client, ", err)
-	}
+	flag.Parse()
 
-	log.Fatal(c.StartReceiver(context.Background(), reconcile))
-}
+	ctx := context.Background()
 
-func newDefaultClient(target ...string) (client.Client, error) {
-	tOpts := []http.Option{http.WithBinaryEncoding()}
-	if len(target) > 0 && target[0] != "" {
-		tOpts = append(tOpts, http.WithTarget(target[0]))
-	}
+	tOpts := []http.Option{cloudevents.WithBinaryEncoding()}
 
 	// Make an http transport for the CloudEvents client.
-	t, err := http.New(tOpts...)
+	t, err := cloudevents.NewHTTPTransport(tOpts...)
 	if err != nil {
-		return nil, err
+		klog.Fatalf("Error createing CloudEvent client: %v", err)
 	}
+
 	// Use the transport to make a new CloudEvents client.
-	c, err := client.New(t,
-		client.WithUUIDs(),
-		client.WithTimeNow(),
+	c, err := cloudevents.NewClient(t,
+		cloudevents.WithUUIDs(),
+		cloudevents.WithTimeNow(),
 	)
+
+	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		return nil, err
+		klog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
-	return c, nil
+
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		klog.Fatalf("Error building kubernetes clientset: %s", err.Error())
+	}
+
+	exampleClient, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		klog.Fatalf("Error building example clientset: %s", err.Error())
+	}
+
+	reconcile := reconciler.New(kubeClient, exampleClient)
+
+	log.Fatalf("failed to start receiver: %s", c.StartReceiver(ctx, reconcile.Reconcile))
+}
+
+func init() {
+	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 }

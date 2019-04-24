@@ -1,0 +1,13 @@
+apiVersion: sources.eventing.knative.dev/v1alpha1
+kind: ApiServerSource
+metadata:
+  name: example-foo
+spec:
+  serviceAccountName: example-foo
+  resources:
+    - apiVersion: samplecontroller.knative.io/v1alpha1
+      kind: Foo
+  sink:
+    apiVersion: serving.knative.dev/v1alpha1
+    kind: Service
+    name: example-foo

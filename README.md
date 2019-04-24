@@ -1,44 +1,50 @@
-# Knative CRD implementation demo
+# Knative Sample Controller
 
-This project demonstrates how to implemented CRDs controllers using the knative Etcd event source linked to
-Knative service.
+This project demonstrates how to implement CustomResourceDefinition (CRD) controllers using the
+Knative [API server event source](https://github.com/knative/eventing-sources/pull/294) linked to Knative service.
 
-This demo defines one CRD defining cloudant database. Currently no databases is created, just simulated
-by printing a message into the console.
+This is a Knative variant of the [sample controller](https://github.com/kubernetes/sample-controller) project.
 
 ## Prerequisites
 
-- [ytt](https://github.com/k14s/ytt)
-- [kapp](https://github.com/k14s/kapp)
-- [ko](https://github.com/google/ko)
-- [kail](hhttps://github.com/boz/kail)
+- A Kubernetes cluster
+- [Knative API Server eventing source](https://github.com/knative/eventing-sources/tree/master/contrib/apiserver/samples) installed in your cluster
+- envsubst installed locally. This is installed by the gettext package. If not installed it can be installed by a Linux package manager, or by Homebrew on OS X.
 
-## Installation
+## Running
 
-1. Clone this repo
-1. run these commands:
+1. Clone this repository somewhere not under $GOPATH
+1. Set $DOCKER_REGISTRY and $DOCKER_USER
+1. Build and publish the sample-controller docker image
 
-```shell
-ytt t -R -f app/ | ko resolve -f - | kapp deploy -y -a cloudantop -f -
+```sh
+go get ./...
+CGO_ENABLED=0 GOOS=linux go build -o sample-controller cmd/reconcile/main.go
+docker build -t $DOCKER_USER/sample-controller .
+docker push $DOCKER_USER/sample-controller
+```
+
+4. Deploy:
+
+```sh
+envsubst < config/template/ksvc-example.yaml | kubectl apply -f -
+kubectl apply -f config
 ```
 
 ## Verifying
 
-1. In one shell do:
-```shell
-kail -l serving.knative.dev/service=k8s-cloudant-crd-demo-reconcile
+1. Apply the sample:
+```sh
+kubectl apply -f sample
 ```
 
-2. Then apply the sample:
-```shell
-kubectl apply -f sample/
+2. Wait a bit and do:
+```sh
+kubectl get deployments example-foo
+NAME          DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+example-foo   1         1         1            1           4m48s
 ```
 
-You should see something like this:
-```
-default/k8s-cloudant-crd-demo-reconcile-w4bjp-deployment-8648c946fg4sfc[user-container]: 2019/04/02 17:48:47 receiving event
-default/k8s-cloudant-crd-demo-reconcile-w4bjp-deployment-8648c946fg4sfc[user-container]: 2019/04/02 17:48:47 {{cloudant-credentials knative-cloudant-database}}
-```
 
 ## Cleaning
 
@@ -48,8 +54,8 @@ default/k8s-cloudant-crd-demo-reconcile-w4bjp-deployment-8648c946fg4sfc[user-con
 kubectl delete -f sample/
 ```
 
-2. Delete the cloudant operator:
+2. Delete the controller:
 
-```shell
-kapp delete -a cloudantop
+```she
+kubectl delete -R -f config
 ```
