@@ -16,12 +16,6 @@ import (
 	"github.com/lionelvillard/knative-sample-controller/pkg/reconciler"
 )
 
-type envConfig struct {
-	// Port on which to listen for cloudevents
-	Port int    `envconfig:"RCV_PORT" default:"8080"`
-	Path string `envconfig:"RCV_PATH" default:"/"`
-}
-
 var (
 	masterURL  string
 	kubeconfig string
