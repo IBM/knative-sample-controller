@@ -28,7 +28,7 @@ docker push $DOCKER_USER/sample-controller
 
 ```sh
 envsubst < config/template/ksvc-example.yaml | kubectl apply -f -
-kubectl apply -f config/default
+kubectl apply -f config/default/
 ```
 
 ## Verifying
@@ -44,7 +44,6 @@ kubectl get deployments example-foo
 NAME          DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 example-foo   1         1         1            1           4m48s
 ```
-
 
 ## Cleaning
 
