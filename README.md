@@ -28,7 +28,7 @@ docker push $DOCKER_USER/sample-controller
 
 ```sh
 envsubst < config/template/ksvc-example.yaml | kubectl apply -f -
-kubectl apply -f config/default
+kubectl apply -R -f config/default
 ```
 
 ## Verifying
