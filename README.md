@@ -45,7 +45,6 @@ NAME          DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 example-foo   1         1         1            1           4m48s
 ```
 
-
 ## Cleaning
 
 1. Delete the sample
