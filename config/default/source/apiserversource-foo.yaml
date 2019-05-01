@@ -7,10 +7,10 @@ spec:
   resources:
     - apiVersion: samplecontroller.knative.io/v1alpha1
       kind: Foo
-      ownerReferences:
-        - apiVersion: apps/v1
-          kind: Deployment
+    - apiVersion: apps/v1
+      kind: Deployment
+      controller: true
   sink:
     apiVersion: serving.knative.dev/v1alpha1
     kind: Service
-    name: example-foo
+    name: example-foo-reconcile
