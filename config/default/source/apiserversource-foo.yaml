@@ -7,9 +7,10 @@ spec:
   resources:
     - apiVersion: samplecontroller.knative.io/v1alpha1
       kind: Foo
-    - apiVersion: apps/v1
-      kind: Deployment
-      controller: true
+    # This is disabled to observe scale down to zero. Knative eventing 0.6.0 does not support event filtering
+    # - apiVersion: apps/v1
+    #   kind: Deployment
+    #   controller: true
   sink:
     apiVersion: serving.knative.dev/v1alpha1
     kind: Service

@@ -1,20 +1,19 @@
-# Knative Sample Controller
+# Serverless Operator running in Knative
 
 This project demonstrates how to implement CustomResourceDefinition (CRD) controllers using the
-Knative [API server event source](https://github.com/knative/eventing) linked to Knative service.
+Knative [API server event source](https://github.com/knative/eventing) feeding Knative services.
 
 This is a Knative variant of the [sample controller](https://github.com/kubernetes/sample-controller) project.
 
 ## Prerequisites
 
-- A Kubernetes cluster
-- [Knative Eventing with the API server eventing source](https://github.com/knative/eventing/tree/079f278353e664162f162f9ec84cac709e2daa03) installed in your cluster
+- A Kubernetes cluster with [Knative 0.6.0](https://knative.dev)
 - envsubst installed locally. This is installed by the gettext package. If not installed it can be installed by a Linux package manager, or by Homebrew on OS X.
 
 ## Running
 
 1. Clone this repository somewhere not under $GOPATH
-1. Set $DOCKER_REGISTRY and $DOCKER_USER
+1. Set $DOCKER_USER
 1. Build and publish the sample-controller docker image
 
 ```sh
@@ -24,26 +23,38 @@ docker build -t $DOCKER_USER/sample-controller .
 docker push $DOCKER_USER/sample-controller
 ```
 
-4. Deploy:
+4. Deploy the sample controller in the default namespace:
 
 ```sh
 envsubst < config/template/ksvc-example.yaml | kubectl apply -f -
-kubectl apply -R -f config/default
+kubectl apply -Rf config/default
 ```
+
+Two pods are created: one watching for events (`apiserver-example-foo-XXX`) and another one containing the reconciling loop (`example-foo-reconcile-XXX-deployment-YYY-ZZZ`). The first pod always stays alive, whereas the second one scale down to zero when there is no events.
+
 
 ## Verifying
 
-1. Apply the sample:
+1. In one terminal, watch for pods.
+```sh
+watch kubectl get pods
+```
+
+2. In another terminal, create a `Foo` object:
 ```sh
 kubectl apply -f sample
 ```
 
-2. Wait a bit and do:
+Observe the pod named `example-foo-reconcile-XXX` being created.
+
+3. Check the controller for `Foo` is working:
 ```sh
 kubectl get deployments example-foo
 NAME          DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 example-foo   1         1         1            1           4m48s
 ```
+
+Observe the pod named `example-foo-reconcile-XXX` being deleted after about 1mn30s (default Knative scale down period).
 
 ## Cleaning
 
@@ -56,5 +67,5 @@ kubectl delete -f sample/
 2. Delete the controller:
 
 ```she
-kubectl delete -R -f config
+kubectl delete -Rf config
 ```
