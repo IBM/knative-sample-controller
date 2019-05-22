@@ -3,17 +3,16 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 
-	cloudevents "github.com/cloudevents/sdk-go"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 
+	"github.com/lionelvillard/knative-sample-controller/pkg/controller"
 	clientset "github.com/lionelvillard/knative-sample-controller/pkg/generated/clientset/versioned"
-	"github.com/lionelvillard/knative-sample-controller/pkg/reconciler"
+	"github.com/lionelvillard/knative-sample-controller/pkg/informer"
 )
 
 var (
@@ -25,20 +24,6 @@ func main() {
 	flag.Parse()
 
 	ctx := context.Background()
-
-	tOpts := []http.Option{cloudevents.WithBinaryEncoding()}
-
-	// Make an http transport for the CloudEvents client.
-	t, err := cloudevents.NewHTTPTransport(tOpts...)
-	if err != nil {
-		klog.Fatalf("Error createing CloudEvent client: %v", err)
-	}
-
-	// Use the transport to make a new CloudEvents client.
-	c, err := cloudevents.NewClient(t,
-		cloudevents.WithUUIDs(),
-		cloudevents.WithTimeNow(),
-	)
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
@@ -55,9 +40,24 @@ func main() {
 		klog.Fatalf("Error building example clientset: %s", err.Error())
 	}
 
-	reconcile := reconciler.New(kubeClient, exampleClient)
+	// Create Cloud Event informer. It creates an HTTP server listening to cloud events on port 8080
+	// and put events into the workqueue
+	queue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos")
+	cloudEventInformer, err := informer.NewInformer(queue)
+	if err != nil {
+		klog.Fatalf("Error creating Cloud Event Informer: %s", err.Error())
+	}
 
-	log.Fatalf("failed to start receiver: %s", c.StartReceiver(ctx, reconcile.Reconcile))
+	// Start this informer in a go routine
+	go cloudEventInformer.Start(ctx)
+
+	// Create the controller for Foo.
+	ctrl := controller.NewController(kubeClient, exampleClient, queue)
+
+	// And run it.
+	if err = ctrl.Run(2, ctx.Done()); err != nil {
+		klog.Fatalf("Error running controller: %s", err.Error())
+	}
 }
 
 func init() {

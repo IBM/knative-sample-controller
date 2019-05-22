@@ -8,5 +8,5 @@ spec:
       revisionTemplate:
         spec:
           container:
-            image: $DOCKER_REGISTRY/$DOCKER_USER/sample-controller
+            image: $DOCKER_USER/sample-controller
           serviceAccountName: example-foo-reconcile
